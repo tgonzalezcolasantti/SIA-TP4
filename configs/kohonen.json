@@ -1,0 +1,11 @@
+{
+  "dataset": "../datos/creadores.csv",
+  "out_dir": "../results/kohonen",
+  "features": null,
+  "exclude_columns": [],
+  "seeds": [42, 43, 44],
+  "grid_sizes": [3, 4, 5],
+  "radii": [1.0, 2.0],
+  "learning_rates": [0.1, 0.5],
+  "epochs": [200]
+}

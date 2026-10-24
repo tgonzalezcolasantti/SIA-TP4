@@ -218,3 +218,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Experimentos generados (se regeneran con la configuración guardada)
+results/
