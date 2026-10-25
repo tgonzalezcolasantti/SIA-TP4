@@ -17,11 +17,12 @@ class LinearValue:
         return max(self.minimum_value, (self.initial_value - self.minimum_value) * (self.target_iterations - iteration) + self.minimum_value)
 
 class Kohonen():
+    "Classifies given input in grid"
     def __init__(
         self: Self,
         input_data: np.ndarray,
         grid_size: int,
-        radius: Callable[[int], float] | float,   #radius(iteration)
+        radius: Callable[[int], float] | float, #radius(iteration)
         eta: Callable[[int], float] | float, #learning_rate(iteration)
         iterations: int = 500
     ):
@@ -96,3 +97,13 @@ class Kohonen():
             result[i] = np.linalg.norm(self.input_weights[neighbors] - self.input_weights[i], axis=1).mean()
         # grid_position devuelve (x, y); reshape organiza filas y columnas.
         return result.reshape(self.grid_size, self.grid_size)
+
+def Oja(inputs: np.ndarray, epochs: int, eta: Callable[[int], float]):
+    "Uses neural network to calculate principal component(1) for a dataset."
+    weights = np.random.rand((len(inputs)))
+    for epoch in range(epochs):
+        for data in inputs:
+            output = np.inner(data, weights)
+            weights += eta(epoch) * output * (data - output * weights)
+    return weights
+            
