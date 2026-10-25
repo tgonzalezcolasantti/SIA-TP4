@@ -1,0 +1,13 @@
+{
+  "qr_dir": "../datos/hopfield",
+  "out_dir": "../results/hopfield",
+  "letters": ["A", "K", "S", "J"],
+  "capacity_letters": ["A", "K", "S", "J", "L", "I", "O", "X"],
+  "seeds": [42, 43, 44],
+  "noise_levels": [0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5],
+  "corner_fractions": [0.2, 0.4],
+  "max_sweeps": 50,
+  "capacity_noise": 0.2,
+  "spurious_attempts": 200,
+  "spurious_noise": 0.5
+}
