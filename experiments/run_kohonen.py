@@ -100,8 +100,8 @@ def run_study(config: Dict[str, Any]):
     bmus = model.bmus
     assignments = df[["creator_id", "name"]].copy()
     assignments["neuron"] = bmus
-    assignments["x"] = model.grid_position[bmus,0]
-    assignments["y"] = model.grid_position[bmus,0]
+    assignments["x"] = model.grid_position[bmus, 1]
+    assignments["y"] = model.grid_position[bmus, 0]
     assignments.to_csv(out / "assignments.csv", index=False)
     profiles = df[preprocessing["features"]].copy()
     profiles["neuron"] = bmus
