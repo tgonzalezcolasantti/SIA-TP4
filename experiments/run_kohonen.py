@@ -11,13 +11,12 @@ from typing import Any, Callable, Dict, List
 import numpy as np
 import pandas as pd
 
-from experiments.metrics import evaluate_som, u_matrix
 from experiments.utils import ROOT, load_config, prepare_creators, save_json
 from models.unsupervised import Kohonen
 from experiments.plot_results import plot_results
 
 
-def train_model(data: np.ndarray, grid: int, radius: float, rate: float, epochs: int, seed: int):
+def train_model(data: np.ndarray, grid: int, radius: float, rate: float, epochs: int, seed: int) -> Kohonen:
     """Controla la inicialización aleatoria sin modificar el modelo original."""
     state = np.random.get_state()
     try:
@@ -78,10 +77,9 @@ def run_study(config: Dict[str, Any]):
         for seed in config["seeds"]:
             start = time.perf_counter()
             model = train_model(data, grid, radius, rate, epochs, seed)
-            metrics, _ = evaluate_som(model, data)
             rows.append({"config_id": config_id, "grid_size": grid, "radius": radius,
                          "learning_rate": rate, "epochs": epochs, "seed": seed,
-                         **metrics, "seconds": time.perf_counter() - start})
+                         **model.metrics, "seconds": time.perf_counter() - start})
         print(f"Configuración {config_id + 1}/{len(settings)} terminada", flush=True)
     trials = pd.DataFrame(rows)
     trials.to_csv(out / "all_trials.csv", index=False)
@@ -99,18 +97,18 @@ def run_study(config: Dict[str, Any]):
     representative = candidates.iloc[(candidates.quantization_error - selected.quantization_error_mean).abs().argmin()]
     grid, epochs, seed = (int(representative[k]) for k in ("grid_size", "epochs", "seed"))
     model = train_model(data, grid, float(representative.radius), float(representative.learning_rate), epochs, seed)
-    _, bmus = evaluate_som(model, data)
+    bmus = model.bmus
     assignments = df[["creator_id", "name"]].copy()
     assignments["neuron"] = bmus
-    assignments["x"] = bmus % grid
-    assignments["y"] = bmus // grid
+    assignments["x"] = model.grid_position[bmus,0]
+    assignments["y"] = model.grid_position[bmus,0]
     assignments.to_csv(out / "assignments.csv", index=False)
     profiles = df[preprocessing["features"]].copy()
     profiles["neuron"] = bmus
     profiles.groupby("neuron").mean().to_csv(out / "neuron_profiles.csv")
     np.savez(out / "selected_model.npz", weights=model.input_weights, grid_size=grid,
              mean=preprocessing["mean"], scale=preprocessing["scale"], features=preprocessing["features"])
-    pd.DataFrame(u_matrix(model)).to_csv(out / "u_matrix.csv", index=False)
+    pd.DataFrame(model.u_matrix()).to_csv(out / "u_matrix.csv", index=False)
     save_json(out / "selection.json", {k: representative[k].item() for k in representative.index})
     return out
 
