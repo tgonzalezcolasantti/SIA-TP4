@@ -100,10 +100,9 @@ class Kohonen():
 
 def Oja(inputs: np.ndarray, epochs: int, eta: Callable[[int], float]):
     "Uses neural network to calculate principal component(1) for a dataset."
-    weights = np.random.rand((len(inputs)))
+    weights = np.random.rand(inputs.shape[1])
     for epoch in range(epochs):
         for data in inputs:
             output = np.inner(data, weights)
             weights += eta(epoch) * output * (data - output * weights)
     return weights
-            
