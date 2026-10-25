@@ -1,34 +1,33 @@
 """Barrido y agregación de resultados, siguiendo compare_activations.py del TP3."""
 
 import argparse
-from contextlib import redirect_stdout
 import hashlib
-import io
 from itertools import product
 from pathlib import Path
 import platform
 import time
+from typing import Any, Callable, Dict, List
 
 import numpy as np
 import pandas as pd
 
 from experiments.metrics import evaluate_som, u_matrix
 from experiments.utils import ROOT, load_config, prepare_creators, save_json
-from models.unsupervised import Kohonnen
+from models.unsupervised import Kohonen
+from experiments.plot_results import plot_results
 
 
-def train_model(data, grid, radius, rate, epochs, seed):
+def train_model(data: np.ndarray, grid: int, radius: float, rate: float, epochs: int, seed: int):
     """Controla la inicialización aleatoria sin modificar el modelo original."""
     state = np.random.get_state()
     try:
         np.random.seed(seed)
-        with redirect_stdout(io.StringIO()):
-            return Kohonnen(data, grid, radius, rate, epochs)
+        return Kohonen(data, grid, radius, rate, epochs)
     finally:
         np.random.set_state(state)
 
 
-def validate_config(config):
+def validate_config(config: Dict[str, Any]):
     for key in ("seeds", "grid_sizes", "radii", "learning_rates", "epochs"):
         values = config[key]
         if not isinstance(values, list) or not values or len(set(values)) != len(values):
@@ -46,7 +45,7 @@ def validate_config(config):
         raise ValueError("Cada radio debe ser positivo y <= a todos los tamaños de grilla")
 
 
-def run_study(config):
+def run_study(config: Dict[str, Any]):
     validate_config(config)
     df, data, preprocessing = prepare_creators(
         config["dataset"], config.get("features"), config.get("exclude_columns")
@@ -73,7 +72,7 @@ def run_study(config):
     standardized[preprocessing["features"]] = data
     standardized.to_csv(out / "standardized_creators.csv", index=False)
 
-    rows = []
+    rows: List[Dict[str, int | float]] = []
     settings = list(product(config["grid_sizes"], config["radii"], config["learning_rates"], config["epochs"]))
     for config_id, (grid, radius, rate, epochs) in enumerate(settings):
         for seed in config["seeds"]:
@@ -121,7 +120,6 @@ def main():
     parser.add_argument("--config", type=Path, default=ROOT / "configs/kohonen.json")
     args = parser.parse_args()
     out = run_study(load_config(args.config))
-    from experiments.plot_results import plot_results
     plot_results(out)
     print(f"Resultados y gráficos: {out}")
 

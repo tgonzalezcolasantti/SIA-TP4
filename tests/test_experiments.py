@@ -8,12 +8,12 @@ import pandas as pd
 from experiments.metrics import evaluate_som, u_matrix
 from experiments.run_kohonen import run_study, train_model
 from experiments.utils import ROOT, prepare_creators, transform_features
-from models.unsupervised import Kohonnen
+from models.unsupervised import Kohonen
 
 
 class ExperimentTests(unittest.TestCase):
     def test_known_metrics_and_u_matrix(self):
-        model = Kohonnen(np.array([[0.0]]), 2, 1, 0.1, 0)
+        model = Kohonen(np.array([[0.0]]), 2, 1.0, 0.1, 0)
         # Los dos pesos más cercanos al segundo dato son diagonales.
         model.input_weights[:] = [[0], [100], [200], [1]]
         metrics, bmus = evaluate_som(model, np.array([[0.0], [0.5]]))

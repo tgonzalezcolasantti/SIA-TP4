@@ -1,22 +1,37 @@
 from math import sqrt
-from typing import List, Self, Tuple
+from numbers import Number
+from typing import Callable, List, Self, Tuple
 
 import numpy as np
 
-from models.neural_network import Perceptron
+class ConstantValue:
+    def __init__(self: Self, value: float):
+        self.value = value
+    def __call__(self: Self, iteration: int) -> float:
+        return self.value
 
+class LinearValue:
+    def __init__(self: Self, initial_value: float, minimum_value: float, target_iterations: int):
+        self.initial_value = initial_value
+        self.minimum_value = minimum_value
+        self.target_iterations = target_iterations
+    def __call__(self: Self, iteration: int) -> float:
+        return max(self.minimum_value, (self.initial_value - self.minimum_value) * (self.target_iterations - iteration) + self.minimum_value)
 
-class Kohonnen():
-    def __init__(self: Self, input_data: np.ndarray, grid_size: int, radius: float, learning_rate: float, iterations: int = 500):
+class Kohonen():
+    def __init__(
+        self: Self,
+        input_data: np.ndarray,
+        grid_size: int,
+        radius: Callable[[int], float] | float,   #radius(iteration)
+        eta: Callable[[int], float] | float, #learning_rate(iteration)
+        iterations: int = 500
+    ):
         if input_data.ndim != 2:
             raise AttributeError("Input must be 2-dimensional")
-        if radius <= 0 or radius > grid_size:
-            raise AttributeError("Radius must be between 0 and grid size.")
-        if learning_rate > 1 or learning_rate <=0:
-            raise AttributeError("Learning rate must be between 0 and 1")
 
-        self.radius = radius
-        self.learning_rate = learning_rate
+        self.radius: Callable[[int], float] = ConstantValue(radius) if isinstance(radius, float) else radius # type: ignore
+        self.eta: Callable[[int], float] = ConstantValue(eta) if isinstance(eta, float) else eta # type: ignore
         self.grid_size = grid_size
         self.iterations = iterations
         self.input_weights = np.empty((grid_size**2, input_data.shape[1]))
@@ -35,21 +50,22 @@ class Kohonnen():
     def grid_distance(self: Self, n1: Tuple[int, int], n2: Tuple[int, int]) -> float:
         return sqrt((n1[0] - n2[0]) **2 + (n1[1] - n2[1]) **2)
 
-    def grid_neighbors(self: Self, neuron: int) -> List[int]:
+    def grid_neighbors(self: Self, neuron: int, iteration: int) -> List[int]:
         neuron_position = self.grid_position(neuron)
         neighbors: List[int] = []
         for i in range(0, self.grid_size**2):
-            if i != neuron and self.grid_distance(self.grid_position(i), neuron_position) <= self.radius:
+            if i != neuron and self.grid_distance(self.grid_position(i), neuron_position) <= self.radius(iteration):
                 neighbors.append(i)
         return neighbors
 
     def train_single_input(self: Self, input_data: np.ndarray, iteration: int):
         winning_neuron = self.similarity(input_data)
-        neighbors = self.grid_neighbors(winning_neuron)
-        self.input_weights[neighbors] = self.input_weights[neighbors] + self.learning_rate * (input_data - self.input_weights[neighbors])
+        neighbors = self.grid_neighbors(winning_neuron, iteration)
+        self.input_weights[neighbors] = self.input_weights[neighbors] + self.eta(iteration) * (input_data - self.input_weights[neighbors])
 
     def train(self: Self, input_data: np.ndarray):
         for iteration in range(self.iterations):
             print(f"Iteration {iteration}")
             for single_data in input_data:
                 self.train_single_input(single_data, iteration)
+
