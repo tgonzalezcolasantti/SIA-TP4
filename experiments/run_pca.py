@@ -93,6 +93,8 @@ def plot_biplot(out: Path):
     coso: Tuple[Figure, List[Axes]] = plt.subplots(1, 2, figsize=(20, 8))
     fig, axes = coso
     axes[1].scatter(scores["PC1"], scores["PC2"], alpha=0.75)
+    for index, entry in scores.iterrows():
+        axes[1].text(entry["PC1"] + np.random.rand()*.2, entry["PC2"] + np.random.rand()*.2, entry["name"])
     axes[1].set_title("Biplot scatter")
 
     def horizontal_alignment(lx):
