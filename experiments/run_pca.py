@@ -169,7 +169,7 @@ def plot_oja_index_comparison(out):
     else:
         error = scores["PC1"] - scores_oja["PC1"]
 
-    print(f"MSE (PC1 - OJA): {(error**2).mean()}")
+    print(f"MSE (PC1 - OJA): {(error**2).mean():.4e}")
 
 def plot_results(out):
     plot_biplot(out)
