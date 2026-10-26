@@ -2,7 +2,7 @@
   "dataset": "../datos/creadores.csv",
   "out_dir": "../results/pca",
   "features": [],
-  "exclude_columns": [],
+  "exclude_columns": ["price_ars"],
   "id_columns": ["creator_id", "name"],
   "components": 2,
   "oja_epochs": 200,

@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-from typing import Iterable, List, TypedDict, Tuple
+from typing import List, TypedDict, Tuple
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
@@ -21,7 +21,7 @@ class PCAConfig(TypedDict):
     oja_epochs: int
     oja_eta: float
 
-def dump_scores(out: Path, df: pd.DataFrame, id_cols: List[str], scores: Iterable):
+def dump_scores(out: Path, df: pd.DataFrame, id_cols: List[str], scores: np.ndarray):
     score_dicts = []
     for idx, score in enumerate(scores):
         row = {}
@@ -73,7 +73,7 @@ def run_study(config: PCAConfig) -> Path:
         out / "scores_oja.csv",
         df,
         config["id_columns"],
-        np.inner(data.standard_values, oja_coefficients.flatten()).reshape((-1,1))
+        np.asarray(np.inner(data.standard_values, oja_coefficients.flatten())).reshape((-1,1))
     )
     return out
 
@@ -148,7 +148,10 @@ def plot_oja_index_comparison(out):
     scores = pd.read_csv(out / "scores.csv")
     scores_oja = pd.read_csv(out / "scores_oja.csv")
 
-    error = scores["PC1"] - scores_oja["PC1"]
+    if all(scores_oja["PC1"] * scores["PC1"] <= 0):
+        error = scores["PC1"] + scores_oja["PC1"]
+    else:
+        error = scores["PC1"] - scores_oja["PC1"]
 
     print(f"MSE: {(error**2).mean()}")
 
