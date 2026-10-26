@@ -39,6 +39,7 @@ def prepare_creators(
     exclude_columns: List[str]
 ) -> Tuple[pd.DataFrame, ZScoreStandardize, CreatorMetadata]:
     """Separa identificadores y ajusta z-score con desvío poblacional (ddof=0)."""
+    print("Loading creators")
     df = pd.read_csv(path)
     if not set(identifiers).issubset(df.columns):
         raise ValueError("El CSV debe contener creator_id y name")
@@ -58,7 +59,8 @@ def prepare_creators(
     values = numeric.to_numpy(dtype=float)
     if not np.isfinite(values).all():
         raise ValueError("Hay valores faltantes o infinitos; resolverlos en el EDA antes de entrenar")
-    
+
+    print("Standarizing creators")
     standardized = ZScoreStandardize(values)
     metadata: CreatorMetadata = {
         "features": list(features), "mean": standardized.means, "scale": standardized.scales,

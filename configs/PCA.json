@@ -1,0 +1,8 @@
+{
+  "dataset": "../datos/creadores.csv",
+  "out_dir": "../results/pca",
+  "features": [],
+  "exclude_columns": [],
+  "id_columns": ["creator_id", "name"],
+  "components": 20
+}
