@@ -1,7 +1,7 @@
-from typing import Callable, Dict, Self, TypedDict
+from typing import Callable, Optional, Self, TypedDict
 
 import numpy as np
-
+from rich.progress import Progress, TaskID
 from models.standarization import ZScoreStandardize
 
 class ConstantValue:
@@ -32,12 +32,15 @@ class Kohonen():
         grid_size: int,
         radius: Callable[[int], float] | float, #radius(iteration)
         eta: Callable[[int], float] | float, #learning_rate(iteration)
-        iterations: int = 500
+        iterations: int = 500,
+        seed: int = 0,
+        task: Optional[TaskID] = None,
+        progress: Optional[Progress] = None    
     ):
         input_standard = input_data.standard_values
         if input_standard.ndim != 2:
             raise AttributeError("Input must be 2-dimensional")
-
+        self.rng = np.random.RandomState(seed=seed) # pylint: disable=no-member
         self.radius: Callable[[int], float] = ConstantValue(radius) if isinstance(radius, float) else radius # type: ignore
         self.eta: Callable[[int], float] = ConstantValue(eta) if isinstance(eta, float) else eta # type: ignore
         self.grid_size = grid_size
@@ -45,13 +48,20 @@ class Kohonen():
         self.bmus: np.ndarray
         self.metrics: KohonenMetrics
         self.input_weights = np.empty((grid_size**2, input_standard.shape[1]))
-        indices = np.random.randint(0, len(input_standard), size=grid_size**2)
+        indices = self.rng.randint(0, len(input_standard), size=grid_size**2)
         self.input_weights[:] = input_standard[indices]
         self.grid_position = np.asarray(np.divmod(np.arange(self.grid_size**2), self.grid_size)).T
         self.grid_distance = np.empty((grid_size**2, grid_size**2))
+        self.progress = progress
+        self.task = task
+        if self.progress and self.task:
+            self.progress.start_task(self.task)
+            self.progress.update(self.task, visible=True)
         self._grid_distances()
         self._train(input_standard)
         self._evaluate_som(input_standard)
+        if self.progress and self.task:
+            self.progress.remove_task(self.task)
 
 
     def similarity(self: Self, input_data: np.ndarray) -> np.ndarray:
@@ -79,8 +89,8 @@ class Kohonen():
 
     def _train(self: Self, input_data: np.ndarray):
         for iteration in range(self.iterations):
-            if iteration % 100 == 0:
-                print(f"Epoch {iteration}")
+            if self.progress and self.task:
+                self.progress.update(self.task, completed=iteration)
             for single_data in input_data:
                 self.train_single_input(single_data, iteration)
 

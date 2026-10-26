@@ -2,13 +2,11 @@
 
 import argparse
 from itertools import product
-import json
 import multiprocessing
 from multiprocessing.pool import ApplyResult, ThreadPool
 from pathlib import Path
-import subprocess
 import time
-from typing import List, Optional, TypedDict
+from typing import List, Tuple, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -18,8 +16,8 @@ from rich.table import Table
 
 from experiments.utils import ROOT, KohonenConfig, load_config, prepare_creators, save_json
 from experiments.kohonen.plot import plot_results
-from experiments.kohonen.train import train_model
-from models.unsupervised import KohonenMetrics
+from models.standarization import ZScoreStandardize
+from models.unsupervised import Kohonen, KohonenMetrics
 
 class KohonenResult(KohonenMetrics, TypedDict):
     config_id: int
@@ -30,41 +28,12 @@ class KohonenResult(KohonenMetrics, TypedDict):
     seed: int
     seconds: float
 
-def run_task(config: Path, grid: int, radius: float, eta: float, epochs: int, seed: int, label: str, task: TaskID, progress: Progress) -> Optional[KohonenResult]:
-    cmd: List[str] = ["uv", "run", "python", "-m", "experiments.kohonen.train", "--config", str(config),
-                      "--grid", str(grid), "--radius", str(radius), "--eta", str(eta), 
-                      "--epochs", str(epochs), "--seed", str(seed), "--label", str(label)]
-    if progress:
-        progress.start_task(task)
-        progress.update(task, visible=True)
-    gen = 0
-    with subprocess.Popen(cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=1) as proc:
-        while True:
-            result = proc.poll()
-            if result is not None:
-                break
-            if proc.stdout:
-                while True:
-                    line = proc.stdout.readline()
-                    if not line:
-                        break
-                    if "Epoch" in line and progress is not None:
-                        gen = int(line.split()[1])
-                        progress.update(task, completed=gen, refresh=True)
-                    elif "{" in line:
-                        progress.remove_task(task)
-                        line = line.replace("\'", "\"")
-                        print(line, flush=True)
-                        return json.loads(line)
-                    time.sleep(0)
-
-        if progress:
-            progress.remove_task(task)
-        if result != 0:
-            print(f"  ERROR: {label}", flush=True)
-            if proc.stderr is not None:
-                print(proc.stderr.readlines(), flush=True)
-        return None
+def run_task(data: ZScoreStandardize, grid: int, radius: float, eta: float, epochs: int, seed: int, label: int, task: TaskID, progress: Progress) -> Tuple[Kohonen, KohonenResult]:
+    start = time.perf_counter()
+    kohonen = Kohonen(data, grid, radius, eta, epochs, seed, task, progress)
+    return kohonen, {"config_id": label, "grid_size": grid, "radius": radius,
+                         "learning_rate": eta, "epochs": epochs, "seed": seed,
+                         **kohonen.metrics, "seconds": time.perf_counter() - start}
 
 
 def validate_config(config: KohonenConfig):
@@ -147,7 +116,7 @@ def run_study(config_path: Path):
                 )
                 jobs.append(
                     executor.apply_async(
-                        run_task, (config_path, grid, radius, rate, epochs, seed, config_id, task, taskprogress)
+                        run_task, (data, grid, radius, rate, epochs, seed, config_id, task, taskprogress)
                     )
                 )
         full_progress = globalprogress.add_task(
@@ -157,11 +126,11 @@ def run_study(config_path: Path):
             for job in list(jobs):
                 if job.ready():
                     jobs.remove(job)
-                    row: KohonenResult = job.get()
+                    row: Tuple[Kohonen, KohonenResult] = job.get()
                     if row is None:
                         raise ValueError("OOPS")
                     globalprogress.advance(full_progress)
-                    rows.append(row)
+                    rows.append(row[1])
                     # print(f"Configuración {row['config_id']}/{len(settings)} terminada", flush=True)
         trials = pd.DataFrame(rows)
         trials.to_csv(out / "all_trials.csv", index=False)
@@ -178,7 +147,19 @@ def run_study(config_path: Path):
         # Mostrar una semilla representativa, cercana a la media, no la mejor corrida.
         representative = candidates.iloc[(candidates.quantization_error - selected.quantization_error_mean).abs().argmin()]
         grid, epochs, seed = (int(representative[k]) for k in ("grid_size", "epochs", "seed"))
-        model = train_model(data, grid, float(representative.radius), float(representative.learning_rate), epochs, seed)
+        task = globalprogress.add_task(
+            f"Candidate k={grid} r={float(representative.radius)} eta={float(representative.learning_rate)}",
+            start=False,
+            total=epochs,
+            visible=False,
+            is_task=True,
+        )
+        job = executor.apply_async(
+            run_task, (data, grid, float(representative.radius), float(representative.learning_rate), epochs, seed, 0, task, globalprogress)
+        )
+        while not job.ready():
+            time.sleep(0.1)
+        model, _ = job.get()
         bmus = model.bmus
         assignments = df[["creator_id", "name"]].copy()
         assignments["neuron"] = bmus
