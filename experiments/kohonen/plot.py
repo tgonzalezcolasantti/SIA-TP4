@@ -24,13 +24,13 @@ def plot_results(results_dir):
 
     summary = pd.read_csv(out / "summary.csv")
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-    labels = [f"{int(r.grid_size)}x{int(r.grid_size)} R={r.radius:g}\nη={r.learning_rate:g} E={int(r.epochs)}"
+    labels = [f"k={int(r.grid_size)} R={r.radius:g} η={r.learning_rate:g}"
               for r in summary.itertuples()]
     for ax, metric, title in zip(axes, ["quantization_error", "topographic_error"],
                                 ["Error de cuantización", "Error topográfico"]):
         ax.bar(np.arange(len(summary)), summary[f"{metric}_mean"], yerr=summary[f"{metric}_std"], capsize=3)
         ax.set_xticks(np.arange(len(summary)), labels, rotation=90)
-        ax.set_title(title + " (media ± desvío)")
+        ax.set_title(title)
     save_figure(fig, "comparison.png")
 
     with np.load(out / "selected_model.npz") as model:

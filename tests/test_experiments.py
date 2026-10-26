@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from experiments.metrics import evaluate_som, u_matrix
-from experiments.run_kohonen import run_study, train_model
+from experiments.kohonen.run import run_study, train_model
 from experiments.utils import ROOT, prepare_creators, transform_features
 from models.unsupervised import Kohonen
 

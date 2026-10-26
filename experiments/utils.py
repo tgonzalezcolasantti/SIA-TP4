@@ -18,6 +18,19 @@ class CreatorMetadata(TypedDict):
     constant_features: List[str]
     ddof: int
 
+class KohonenConfig(TypedDict):
+    dataset: str
+    out_dir: str
+    features: List[str]
+    exclude_columns: List[str]
+    id_columns: List[str]
+    seeds: List[int]
+    grid_sizes: List[int]
+    radii: List[float]
+    learning_rates: List[float]
+    epochs: List[int]
+    max_tasks: int
+
 def load_config(path: Path) -> Dict[str, Any]:
     path = path.resolve()
     config = json.loads(path.read_text(encoding="utf-8"))

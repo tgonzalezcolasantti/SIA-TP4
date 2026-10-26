@@ -79,7 +79,8 @@ class Kohonen():
 
     def _train(self: Self, input_data: np.ndarray):
         for iteration in range(self.iterations):
-            # print(f"Iteration {iteration}")
+            if iteration % 100 == 0:
+                print(f"Epoch {iteration}")
             for single_data in input_data:
                 self.train_single_input(single_data, iteration)
 
@@ -88,7 +89,7 @@ class Kohonen():
         closest = np.argsort(distances, axis=1, kind="stable")[:, :2]
         self.bmus = closest[:, 0]
         # Vecindad de cuatro conexiones (sin diagonales) para error topográfico.
-        coords = np.array([self.grid_position[i] for i in range(self.grid_size**2)])[closest]
+        coords = self.grid_position[closest]
         adjacent = np.abs(coords[:, 0] - coords[:, 1]).sum(axis=1) == 1
         hits = np.bincount(self.bmus, minlength=self.grid_size**2)
         self.metrics = {

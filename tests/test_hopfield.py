@@ -5,8 +5,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from experiments.hopfield_data import add_noise, erase_corner, letter_patterns, load_qr_patterns, normalized_overlap
-from experiments.run_hopfield import load_config, run_experiments
+from experiments.hopfield.hopfield_data import add_noise, erase_corner, letter_patterns, load_qr_patterns, normalized_overlap
+from experiments.hopfield.run_hopfield import load_config, run_experiments
 from experiments.utils import ROOT
 from models.hopfield import Hopfield, classify_recall
 
