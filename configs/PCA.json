@@ -4,5 +4,7 @@
   "features": [],
   "exclude_columns": [],
   "id_columns": ["creator_id", "name"],
-  "components": 2
+  "components": 2,
+  "oja_epochs": 200,
+  "oja_eta": 0.0001
 }

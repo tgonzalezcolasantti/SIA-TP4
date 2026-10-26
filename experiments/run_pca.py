@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-from typing import List, TypedDict, Tuple
+from typing import Iterable, List, TypedDict, Tuple
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
@@ -9,6 +9,7 @@ import pandas as pd
 from sklearn.decomposition import PCA
 
 from experiments.utils import ROOT, load_config, prepare_creators
+from models.unsupervised import Oja
 
 class PCAConfig(TypedDict):
     dataset: Path
@@ -17,6 +18,19 @@ class PCAConfig(TypedDict):
     features: List[str]
     exclude_columns: List[str]
     components: int
+    oja_epochs: int
+    oja_eta: float
+
+def dump_scores(out: Path, df: pd.DataFrame, id_cols: List[str], scores: Iterable):
+    score_dicts = []
+    for idx, score in enumerate(scores):
+        row = {}
+        for label in id_cols:
+            row[label] = df[label].iloc[idx]
+        for pc, val in enumerate(score):
+            row[f"PC{pc+1}"] = val
+        score_dicts.append(row)
+    pd.DataFrame(score_dicts).to_csv(out, index = False)
 
 def run_study(config: PCAConfig) -> Path:
     df, data, preprocessing = prepare_creators(
@@ -27,18 +41,40 @@ def run_study(config: PCAConfig) -> Path:
     print("Running PCA analysis")
     pca = PCA(n_components = config["components"]).fit(data.standard_values)
 
-    pd.DataFrame(pca.components_).to_csv(out / "eigenvectors.csv", index=False, header = preprocessing["features"])
-    eigenvalues = np.asarray([pca.explained_variance_, pca.explained_variance_ratio_, np.cumsum(pca.explained_variance_ratio_)]).T
-    pd.DataFrame(eigenvalues).to_csv(out / "eigenvalues.csv", index = False, header = ["Eigenvalue", "Variance ratio", "Cumulative variance ratio"])
-    scores = []
-    for idx, score in enumerate(pca.transform(data.standard_values)):
-        row = {}
-        for label in config["id_columns"]:
-            row[label] = df[label].iloc[idx]
-        for pc, val in enumerate(score):
-            row[f"PC{pc+1}"] = val
-        scores.append(row)
-    pd.DataFrame(scores).to_csv(out / "scores.csv", index = False)
+    pd.DataFrame(pca.components_).to_csv(
+        out / "eigenvectors.csv",
+        index=False,
+        header = preprocessing["features"]
+    )
+    eigenvalues = np.asarray([
+        pca.explained_variance_,
+        pca.explained_variance_ratio_,
+        np.cumsum(pca.explained_variance_ratio_)
+    ]).T
+    pd.DataFrame(eigenvalues).to_csv(
+        out / "eigenvalues.csv",
+        index = False,
+        header = ["Eigenvalue (Variance)", "Variance ratio", "Cumulative variance ratio"]
+    )
+    dump_scores(out / "scores.csv", df, config["id_columns"], pca.transform(data.standard_values))
+
+    print("Running Oja")
+    oja_coefficients = Oja(
+        data.standard_values,
+        config["oja_epochs"],
+        lambda x: config["oja_eta"]
+    ).reshape((1,-1))
+    pd.DataFrame(oja_coefficients).to_csv(
+        out / "oja.csv",
+        index=False,
+        header = preprocessing["features"]
+    )
+    dump_scores(
+        out / "scores_oja.csv",
+        df,
+        config["id_columns"],
+        np.inner(data.standard_values, oja_coefficients.flatten()).reshape((-1,1))
+    )
     return out
 
 def save_figure(fig: Figure, path: Path):
@@ -58,14 +94,14 @@ def plot_biplot(out: Path):
     fig, axes = coso
     axes[1].scatter(scores["PC1"], scores["PC2"], alpha=0.75)
     axes[1].set_title("Biplot scatter")
-    
-    def horizontalalignment(lx):
+
+    def horizontal_alignment(lx):
         if abs(lx) < 0.1:
             return "center"
         if lx > 0:
             return "left"
         return "right"
-    def verticalalignment(ly):
+    def vertical_alignment(ly):
         if abs(ly) < 0.1:
             return "center"
         if ly > 0:
@@ -74,7 +110,14 @@ def plot_biplot(out: Path):
 
     for name, (lx, ly) in zip(names, loadings):
         axes[0].arrow(0, 0, lx, ly, color="r", alpha=0.5)
-        axes[0].text(lx +  0.02 * np.sign(lx), ly + 0.02 * np.sign(ly), name, color="g", horizontalalignment=horizontalalignment(lx), verticalalignment=verticalalignment(ly))
+        axes[0].text(
+            lx +  0.02 * np.sign(lx),
+            ly + 0.02 * np.sign(ly),
+            name,
+            color="g",
+            horizontalalignment=horizontal_alignment(lx),
+            verticalalignment=vertical_alignment(ly)
+        )
     axes[0].set_title("Biplot composicion de PC1 y PC2")
     axes[0].set_xlim(min(loadings.flatten())*2, max(loadings.flatten())*2)
     axes[0].set_ylim(min(loadings.flatten())*2, max(loadings.flatten())*2)
@@ -99,9 +142,18 @@ def plot_index(out):
     ax.set_title("PC1 por influencer (ordenado)")
     save_figure(fig, out / "index.png")
 
+def plot_oja_index_comparison(out):
+    scores = pd.read_csv(out / "scores.csv")
+    scores_oja = pd.read_csv(out / "scores_oja.csv")
+
+    error = scores["PC1"] - scores_oja["PC1"]
+
+    print(f"MSE: {(error**2).mean()}")
+
 def plot_results(out):
     plot_biplot(out)
     plot_index(out)
+    plot_oja_index_comparison(out)
 
 def main():
     parser = argparse.ArgumentParser(description="Realizar PCA sobre los creadores del TP4")
