@@ -1,6 +1,8 @@
-from typing import Callable, Dict, Self
+from typing import Callable, Dict, Self, TypedDict
 
 import numpy as np
+
+from models.standarization import ZScoreStandardize
 
 class ConstantValue:
     def __init__(self: Self, value: float):
@@ -16,17 +18,24 @@ class LinearValue:
     def __call__(self: Self, iteration: int) -> float:
         return max(self.minimum_value, (self.initial_value - self.minimum_value) * (self.target_iterations - iteration) + self.minimum_value)
 
+class KohonenMetrics(TypedDict):
+    quantization_error: float
+    topographic_error: float
+    empty_neurons: int
+    occupancy: float
+
 class Kohonen():
     "Classifies given input in grid"
     def __init__(
         self: Self,
-        input_data: np.ndarray,
+        input_data: ZScoreStandardize,
         grid_size: int,
         radius: Callable[[int], float] | float, #radius(iteration)
         eta: Callable[[int], float] | float, #learning_rate(iteration)
         iterations: int = 500
     ):
-        if input_data.ndim != 2:
+        input_standard = input_data.standard_values
+        if input_standard.ndim != 2:
             raise AttributeError("Input must be 2-dimensional")
 
         self.radius: Callable[[int], float] = ConstantValue(radius) if isinstance(radius, float) else radius # type: ignore
@@ -34,15 +43,15 @@ class Kohonen():
         self.grid_size = grid_size
         self.iterations = iterations
         self.bmus: np.ndarray
-        self.metrics: Dict[str, float | int]
-        self.input_weights = np.empty((grid_size**2, input_data.shape[1]))
-        indices = np.random.randint(0, len(input_data), size=grid_size**2)
-        self.input_weights[:] = input_data[indices]
+        self.metrics: KohonenMetrics
+        self.input_weights = np.empty((grid_size**2, input_standard.shape[1]))
+        indices = np.random.randint(0, len(input_standard), size=grid_size**2)
+        self.input_weights[:] = input_standard[indices]
         self.grid_position = np.asarray(np.divmod(np.arange(self.grid_size**2), self.grid_size)).T
         self.grid_distance = np.empty((grid_size**2, grid_size**2))
         self._grid_distances()
-        self._train(input_data)
-        self._evaluate_som(input_data)
+        self._train(input_standard)
+        self._evaluate_som(input_standard)
 
 
     def similarity(self: Self, input_data: np.ndarray) -> np.ndarray:

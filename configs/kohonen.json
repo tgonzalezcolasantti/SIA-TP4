@@ -1,8 +1,9 @@
 {
   "dataset": "../datos/creadores.csv",
   "out_dir": "../results/kohonen",
-  "features": null,
+  "features": [],
   "exclude_columns": [],
+  "id_columns": ["creator_id", "name"],
   "seeds": [42, 43, 44],
   "grid_sizes": [3, 4, 5],
   "radii": [1.0, 2.0],

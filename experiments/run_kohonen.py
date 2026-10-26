@@ -1,22 +1,42 @@
 """Barrido y agregación de resultados, siguiendo compare_activations.py del TP3."""
 
 import argparse
-import hashlib
 from itertools import product
 from pathlib import Path
-import platform
 import time
-from typing import Any, Callable, Dict, List
+from typing import List, TypedDict
 
 import numpy as np
 import pandas as pd
 
 from experiments.utils import ROOT, load_config, prepare_creators, save_json
-from models.unsupervised import Kohonen
 from experiments.plot_results import plot_results
+from models.standarization import ZScoreStandardize
+from models.unsupervised import Kohonen, KohonenMetrics
+
+class KohonenConfig(TypedDict):
+    dataset: str
+    out_dir: str
+    features: List[str]
+    exclude_columns: List[str]
+    id_columns: List[str]
+    seeds: List[int]
+    grid_sizes: List[int]
+    radii: List[float]
+    learning_rates: List[float]
+    epochs: List[int]
+
+class KohonenResult(KohonenMetrics, TypedDict):
+    config_id: int
+    grid_size: int
+    radius: float
+    learning_rate: float
+    epochs: int
+    seed: int
+    seconds: float
 
 
-def train_model(data: np.ndarray, grid: int, radius: float, rate: float, epochs: int, seed: int) -> Kohonen:
+def train_model(data: ZScoreStandardize, grid: int, radius: float, rate: float, epochs: int, seed: int) -> Kohonen:
     """Controla la inicialización aleatoria sin modificar el modelo original."""
     state = np.random.get_state()
     try:
@@ -26,7 +46,7 @@ def train_model(data: np.ndarray, grid: int, radius: float, rate: float, epochs:
         np.random.set_state(state)
 
 
-def validate_config(config: Dict[str, Any]):
+def validate_config(config: KohonenConfig):
     for key in ("seeds", "grid_sizes", "radii", "learning_rates", "epochs"):
         values = config[key]
         if not isinstance(values, list) or not values or len(set(values)) != len(values):
@@ -44,34 +64,29 @@ def validate_config(config: Dict[str, Any]):
         raise ValueError("Cada radio debe ser positivo y <= a todos los tamaños de grilla")
 
 
-def run_study(config: Dict[str, Any]):
+def run_study(config: KohonenConfig):
     validate_config(config)
     df, data, preprocessing = prepare_creators(
-        config["dataset"], config.get("features"), config.get("exclude_columns")
+        Path(config["dataset"]), config['id_columns'], config["features"], config["exclude_columns"]
     )
     out = Path(config["out_dir"])
     out.mkdir(parents=True, exist_ok=True)
     save_json(out / "preprocessing.json", preprocessing)
     save_json(out / "config_used.json", config)
     save_json(out / "metadata.json", {
-        "dataset_sha256": hashlib.sha256(Path(config["dataset"]).read_bytes()).hexdigest(),
-        "python": platform.python_version(), "numpy": np.__version__, "pandas": pd.__version__,
         "rows": len(df), "features": preprocessing["features"],
-        "learning_rate_schedule": "constant (original model)",
-        "radius_schedule": "constant", "topology_metrics": "4 orthogonal neighbors",
-        "training_order": "original CSV order",
-        "model_note": "Original Kohonnen excludes the winning neuron from updates",
-        "selection": "min mean quantization error, tie-break mean topographic error",
+        "learning_rate": "constant (original model)",
+        "radius": "constant"
     })
     # Exportaciones de exploración: no reemplazan la interpretación del EDA.
     numeric = df[preprocessing["features"]]
     numeric.describe().to_csv(out / "descriptive_statistics.csv")
     numeric.corr().to_csv(out / "correlations.csv")
     standardized = df[["creator_id", "name"]].copy()
-    standardized[preprocessing["features"]] = data
+    standardized[preprocessing["features"]] = data.standard_values
     standardized.to_csv(out / "standardized_creators.csv", index=False)
 
-    rows: List[Dict[str, int | float]] = []
+    rows: List[KohonenResult] = []
     settings = list(product(config["grid_sizes"], config["radii"], config["learning_rates"], config["epochs"]))
     for config_id, (grid, radius, rate, epochs) in enumerate(settings):
         for seed in config["seeds"]:
@@ -92,7 +107,7 @@ def run_study(config: Dict[str, Any]):
     )
     summary.to_csv(out / "summary.csv", index=False)
     selected = summary.iloc[0]
-    candidates = trials[trials.config_id == selected.config_id].copy()
+    candidates: pd.DataFrame = trials[trials.config_id == selected.config_id].copy()
     # Mostrar una semilla representativa, cercana a la media, no la mejor corrida.
     representative = candidates.iloc[(candidates.quantization_error - selected.quantization_error_mean).abs().argmin()]
     grid, epochs, seed = (int(representative[k]) for k in ("grid_size", "epochs", "seed"))
@@ -117,7 +132,7 @@ def main():
     parser = argparse.ArgumentParser(description="Comparar Kohonen sobre los creadores del TP4")
     parser.add_argument("--config", type=Path, default=ROOT / "configs/kohonen.json")
     args = parser.parse_args()
-    out = run_study(load_config(args.config))
+    out = run_study(load_config(args.config)) # type: ignore
     plot_results(out)
     print(f"Resultados y gráficos: {out}")
 
