@@ -9,10 +9,10 @@ import platform
 import numpy as np
 import pandas as pd
 
-from experiments.hopfield.hopfield_data import (
+from experiments.hopfield.data import (
     add_noise, erase_corner, letter_patterns, load_qr_patterns, normalized_overlap,
 )
-from experiments.hopfield.plot_hopfield import (
+from experiments.hopfield.plot import (
     capacity_figure, overview, pattern_image, recovery_figure, summary_figures,
 )
 from experiments.utils import ROOT, save_json
