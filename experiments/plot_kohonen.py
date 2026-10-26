@@ -17,7 +17,7 @@ def plot_results(results_dir):
     plots = out / "plots"
     plots.mkdir(parents=True, exist_ok=True)
 
-    def save(fig, name):
+    def save_figure(fig, name):
         fig.tight_layout()
         fig.savefig(plots / name, dpi=150, bbox_inches="tight")
         plt.close(fig)
@@ -31,7 +31,7 @@ def plot_results(results_dir):
         ax.bar(np.arange(len(summary)), summary[f"{metric}_mean"], yerr=summary[f"{metric}_std"], capsize=3)
         ax.set_xticks(np.arange(len(summary)), labels, rotation=90)
         ax.set_title(title + " (media ± desvío)")
-    save(fig, "comparison.png")
+    save_figure(fig, "comparison.png")
 
     with np.load(out / "selected_model.npz") as model:
         grid = int(model["grid_size"])
@@ -49,7 +49,7 @@ def plot_results(results_dir):
     for (x, y), group in assignments.groupby(["x", "y"]):
         axes[0].text(x, y, "\n".join(group.creator_id), ha="center", va="center", fontsize=7,
                      bbox={"facecolor": "white", "alpha": 0.8, "edgecolor": "none"})
-    save(fig, "map_and_u_matrix.png")
+    save_figure(fig, "map_and_u_matrix.png")
 
     columns = min(4, len(features))
     rows = int(np.ceil(len(features) / columns))
@@ -61,7 +61,7 @@ def plot_results(results_dir):
         im = ax.imshow(weights[:, i].reshape(grid, grid), cmap="coolwarm")
         ax.set_title(features[i], fontsize=9)
         fig.colorbar(im, ax=ax, label="Peso estandarizado")
-    save(fig, "component_planes.png")
+    save_figure(fig, "component_planes.png")
 
     correlations = pd.read_csv(out / "correlations.csv", index_col=0)
     fig, ax = plt.subplots(figsize=(14, 12))
@@ -70,7 +70,7 @@ def plot_results(results_dir):
     ax.set_yticks(range(len(correlations)), correlations.index, fontsize=7)
     ax.set_title("Correlaciones de las variables seleccionadas")
     fig.colorbar(im, ax=ax)
-    save(fig, "correlations.png")
+    save_figure(fig, "correlations.png")
 
 
 if __name__ == "__main__":

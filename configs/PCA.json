@@ -4,5 +4,5 @@
   "features": [],
   "exclude_columns": [],
   "id_columns": ["creator_id", "name"],
-  "components": 20
+  "components": 2
 }

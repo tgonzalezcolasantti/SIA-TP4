@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from experiments.utils import ROOT, load_config, prepare_creators, save_json
-from experiments.plot_results import plot_results
+from experiments.plot_kohonen import plot_results
 from models.standarization import ZScoreStandardize
 from models.unsupervised import Kohonen, KohonenMetrics
 
