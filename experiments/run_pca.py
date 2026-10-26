@@ -120,6 +120,10 @@ def plot_biplot(out: Path):
             horizontalalignment=horizontal_alignment(lx),
             verticalalignment=vertical_alignment(ly)
         )
+
+    print(f"{'parametro':>30s}  angulo\tmodulo")
+    for name, (lx, ly) in sorted(zip(names, loadings), key= lambda x: np.atan2(x[1][1], x[1][0])):
+        print(f"{name:>30s} {np.atan2(ly, lx):.4f}\t{np.sqrt(lx**2+ly**2):.4f}")
     axes[0].set_title("Biplot composicion de PC1 y PC2")
     axes[0].set_xlim(min(loadings.flatten())*2, max(loadings.flatten())*2)
     axes[0].set_ylim(min(loadings.flatten())*2, max(loadings.flatten())*2)
@@ -144,20 +148,33 @@ def plot_index(out):
     ax.set_title("PC1 por influencer (ordenado)")
     save_figure(fig, out / "index.png")
 
+def plot_pc1_weights(out):
+    scores = pd.read_csv(out / "eigenvectors.csv")
+
+    fig, ax = plt.subplots(figsize=(10,5))
+
+    pc1 = scores.iloc[0]
+    ax.bar(np.arange(len(pc1)), pc1)
+    ax.set_xticks(np.arange(len(pc1)),scores.columns, rotation=90)
+    ax.set_ylabel("Ponderacion")
+    ax.set_title("Ponderacion de componentes de PC1")
+    save_figure(fig, out / "pc1_composition.png")
+
 def plot_oja_index_comparison(out):
     scores = pd.read_csv(out / "scores.csv")
     scores_oja = pd.read_csv(out / "scores_oja.csv")
 
-    if all(scores_oja["PC1"] * scores["PC1"] <= 0):
+    if all(scores_oja["PC1"] * scores["PC1"] <= 0.1): #Changui
         error = scores["PC1"] + scores_oja["PC1"]
     else:
         error = scores["PC1"] - scores_oja["PC1"]
 
-    print(f"MSE: {(error**2).mean()}")
+    print(f"MSE (PC1 - OJA): {(error**2).mean()}")
 
 def plot_results(out):
     plot_biplot(out)
     plot_index(out)
+    plot_pc1_weights(out)
     plot_oja_index_comparison(out)
 
 def main():
