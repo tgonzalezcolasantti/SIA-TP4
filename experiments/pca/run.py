@@ -90,12 +90,11 @@ def plot_biplot(out: Path):
     loadings = pc_data.T
     scores = pd.read_csv(out / "scores.csv")
 
-    coso: Tuple[Figure, List[Axes]] = plt.subplots(1, 2, figsize=(20, 8))
-    fig, axes = coso
-    axes[1].scatter(scores["PC1"], scores["PC2"], alpha=0.75)
+    fig, ax = plt.subplots(figsize=(10, 8))
+    ax.scatter(scores["PC1"], scores["PC2"], alpha=0.75)
     for index, entry in scores.iterrows():
-        axes[1].text(entry["PC1"] + np.random.rand()*.2, entry["PC2"] + np.random.rand()*.2, entry["name"])
-    axes[1].set_title("Biplot scatter")
+        ax.text(entry["PC1"] + np.random.rand()*.1, entry["PC2"] + np.random.rand()*.1, entry["name"])
+    ax.set_title("Biplot scatter")
 
     def horizontal_alignment(lx):
         if abs(lx) < 0.1:
@@ -111,8 +110,8 @@ def plot_biplot(out: Path):
         return "bottom"
 
     for name, (lx, ly) in zip(names, loadings):
-        axes[0].arrow(0, 0, lx, ly, color="r", alpha=0.5)
-        axes[0].text(
+        ax.arrow(0, 0, lx, ly, color="r", alpha=0.5)
+        ax.text(
             lx +  0.02 * np.sign(lx),
             ly + 0.02 * np.sign(ly),
             name,
@@ -124,15 +123,14 @@ def plot_biplot(out: Path):
     print(f"{'parametro':>30s}  angulo\tmodulo")
     for name, (lx, ly) in sorted(zip(names, loadings), key= lambda x: np.atan2(x[1][1], x[1][0])):
         print(f"{name:>30s} {np.atan2(ly, lx):.4f}\t{np.sqrt(lx**2+ly**2):.4f}")
-    axes[0].set_title("Biplot composicion de PC1 y PC2")
-    axes[0].set_xlim(min(loadings.flatten())*2, max(loadings.flatten())*2)
-    axes[0].set_ylim(min(loadings.flatten())*2, max(loadings.flatten())*2)
+    ax.set_title("Biplot composicion de PC1 y PC2")
+    ax.set_xlim(min(scores["PC1"])*1.1, max(scores["PC1"])*1.4)
+    ax.set_ylim(min(scores["PC2"])*1.1, max(scores["PC2"])*1.2)
 
-    for ax in axes:
-        ax.axhline(0, color="gray", lw=0.8)
-        ax.axvline(0, color="gray", lw=0.8)
-        ax.set_xlabel(f"PC1 ({variance_data[0]:.1%})")
-        ax.set_ylabel(f"PC2 ({variance_data[1]:.1%})")
+    ax.axhline(0, color="gray", lw=0.8)
+    ax.axvline(0, color="gray", lw=0.8)
+    ax.set_xlabel(f"PC1 ({variance_data[0]:.1%})")
+    ax.set_ylabel(f"PC2 ({variance_data[1]:.1%})")
     save_figure(fig, out / "biplot.png")
 
 def plot_index(out):

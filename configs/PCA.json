@@ -2,7 +2,7 @@
   "dataset": "../datos/creadores.csv",
   "out_dir": "../results/pca",
   "features": [],
-  "exclude_columns": ["price_ars", "total_engagement_per_1000"],
+  "exclude_columns": ["price_ars", "total_engagement_per_1000", "topic_football_pct", "topic_makeup_pct", "topic_dogs_pct", "topic_art_pct", "content_tutorial_pct", "content_entertainment_pct", "content_showcase_pct"],
   "id_columns": ["creator_id", "name"],
   "components": 2,
   "oja_epochs": 200,
