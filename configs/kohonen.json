@@ -5,9 +5,9 @@
   "exclude_columns": [],
   "id_columns": ["creator_id", "name"],
   "seeds": [42, 43, 44],
-  "grid_sizes": [3, 4, 5],
-  "radii": [1.0, 1.5, 2.0],
-  "learning_rates": [0.1, 0.01, 0.001, 0.0001],
+  "grid_sizes": [4],
+  "radii": [1.5],
+  "learning_rates": [0.01],
   "epochs": [20000],
   "max_tasks": 24
 }

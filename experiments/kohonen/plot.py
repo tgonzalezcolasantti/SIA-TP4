@@ -42,6 +42,10 @@ def plot_results(results_dir):
     print(time_vs_triangles_map)
     bar_graph(plots / 'error_vs_rad.png', time_vs_triangles_map, "Error de cuantizacion vs radio", "Error")
 
+    time_vs_triangles_map = parse_csv(csv_file, ['grid_size'], 'radius', 'topographic_error')
+    print(time_vs_triangles_map)
+    bar_graph(plots / 'topo_vs_rad.png', time_vs_triangles_map, "Error de topologia vs radio", "Error", sorter=float)
+
     summary = pd.read_csv(out / "summary.csv")
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     labels = [f"k={int(r.grid_size)} R={r.radius:g} η={r.learning_rate:g}"
@@ -101,7 +105,7 @@ def bar_graph(output_file, data: Mapping[str, Mapping[str, List[float]]], xlabel
 
     for idx, x in enumerate(sorted(data.keys(), key=sorter)):
         bars_x = np.arange(len(data[x])) + bar_width * idx
-        y_data = [data[x][group] for group in groups]
+        y_data = [data[x][group] for group in sorted(groups, key=sorter)]
         # if isinstance(y_data[0], List):
         means = [np.mean(i) for i in y_data] # type: ignore
         errors = [np.std(i) for i in y_data] # type: ignore
@@ -115,7 +119,7 @@ def bar_graph(output_file, data: Mapping[str, Mapping[str, List[float]]], xlabel
 
     plt.xlabel(xlabel, fontweight ='bold', fontsize = 15)
     plt.ylabel(ylabel, fontweight ='bold', fontsize = 15)
-    plt.xticks([r + 0.5-bar_width for r in range(len(data[list(data.keys())[0]]))], groups)
+    plt.xticks([r + 0.5-bar_width for r in range(len(data[list(data.keys())[0]]))], sorted(groups, key=sorter))
     if log:
         ax.set_yscale('log')
     ax.margins(y=0.2)

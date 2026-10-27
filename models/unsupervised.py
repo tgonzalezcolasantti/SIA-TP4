@@ -113,7 +113,7 @@ class Kohonen():
         """Distancia media a vecinos ortogonales; misma topología que la métrica."""
         result = np.zeros(self.grid_size**2)
         for i in range(self.grid_size**2):
-            neighbors = self.grid_distance[i] == 1
+            neighbors = self.grid_distance[i] <= self.radius(self.iterations)
             result[i] = np.linalg.norm(self.input_weights[neighbors] - self.input_weights[i], axis=1).mean()
         # grid_position devuelve (x, y); reshape organiza filas y columnas.
         return result.reshape(self.grid_size, self.grid_size)
